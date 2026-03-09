@@ -1,0 +1,19 @@
+{
+  "name": "pulsesync",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "mobile"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:mobile": "npm run start --workspace mobile",
+    "dev": "concurrently -n backend,mobile -c cyan,magenta \"npm run dev:backend\" \"npm run dev:mobile\"",
+    "start:backend": "npm run start --workspace backend",
+    "start:mobile": "npm run start --workspace mobile"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
