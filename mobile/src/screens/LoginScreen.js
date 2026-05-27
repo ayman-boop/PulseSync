@@ -14,6 +14,21 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
 WebBrowser.maybeCompleteAuthSession();
 
+function parseAuthTokensFromUrl(url) {
+  if (!url || typeof url !== "string") {
+    return { accessToken: null, refreshToken: null };
+  }
+
+  // Supabase may return tokens in query params or URL hash fragment.
+  const normalizedUrl = url.includes("#") ? url.replace("#", "?") : url;
+  const { queryParams } = Linking.parse(normalizedUrl);
+
+  const accessToken = typeof queryParams?.access_token === "string" ? queryParams.access_token : null;
+  const refreshToken = typeof queryParams?.refresh_token === "string" ? queryParams.refresh_token : null;
+
+  return { accessToken, refreshToken };
+}
+
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -86,7 +101,27 @@ export default function LoginScreen() {
       }
 
       if (data?.url) {
-        await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (result.type === "success" && result.url) {
+          const { accessToken, refreshToken } = parseAuthTokensFromUrl(result.url);
+
+          if (!accessToken || !refreshToken) {
+            Alert.alert(
+              "Google sign in incomplete",
+              "OAuth callback did not include tokens. Check Supabase redirect URL configuration."
+            );
+            return;
+          }
+
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (sessionError) {
+            Alert.alert("Google sign in failed", sessionError.message);
+          }
+        }
       }
     } finally {
       setIsLoading(false);
