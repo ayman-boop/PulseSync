@@ -31,9 +31,13 @@ export default function HomeScreen({ navigation, session }) {
 
   const userId = session?.user?.id || "anonymous";
   const authToken = session?.access_token || "";
+  const mobileRedirectUrl = Linking.createURL("spotify-callback");
   const connectSpotifyUrl = useMemo(
-    () => `${BACKEND_URL}/auth/spotify/login?userId=${encodeURIComponent(userId)}`,
-    [userId]
+    () =>
+      `${BACKEND_URL}/auth/spotify/login?userId=${encodeURIComponent(userId)}&frontend_redirect=${encodeURIComponent(
+        mobileRedirectUrl
+      )}`,
+    [mobileRedirectUrl, userId]
   );
 
   useEffect(() => {
@@ -73,7 +77,20 @@ export default function HomeScreen({ navigation, session }) {
   }, []);
 
   const handleOpenSpotifyConnect = async () => {
-    await WebBrowser.openBrowserAsync(connectSpotifyUrl);
+    const result = await WebBrowser.openAuthSessionAsync(connectSpotifyUrl, mobileRedirectUrl);
+    if (result.type === "success" && result.url) {
+      const parsed = Linking.parse(result.url);
+      const queryParams = parsed.queryParams || {};
+      const tokenFromRedirect =
+        typeof queryParams.spotify_refresh_token === "string" ? queryParams.spotify_refresh_token : "";
+      if (tokenFromRedirect) {
+        setSpotifyRefreshToken(tokenFromRedirect);
+        await AsyncStorage.setItem(STORAGE_KEY, tokenFromRedirect);
+      }
+      if (queryParams.spotify === "connected") {
+        Alert.alert("Spotify", "Spotify connection completed.");
+      }
+    }
   };
 
   const handleGeneratePlaylist = async () => {

@@ -21,7 +21,7 @@ app.use(attachSupabaseUser);
 app.use("/health", healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/auth/spotify", spotifyRoutes);
-app.use("/", requireAuthenticatedUser, playlistRoutes);
+app.use("/api/playlist", requireAuthenticatedUser, playlistRoutes);
 
 app.listen(port, () => {
   console.log(`Backend API listening on http://localhost:${port}`);

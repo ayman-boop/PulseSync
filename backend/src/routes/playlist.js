@@ -66,7 +66,7 @@ function getFriendlyErrorMessage(error, context) {
   return message;
 }
 
-router.post("/api/playlist/generate", async (req, res) => {
+router.post("/generate", async (req, res) => {
   const { workout, spotifyRefreshToken } = req.body || {};
 
   if (!spotifyRefreshToken || typeof spotifyRefreshToken !== "string") {

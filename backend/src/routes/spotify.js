@@ -25,7 +25,9 @@ function decodeState(state) {
 
 router.get("/login", (req, res) => {
   const userId = req.user?.id || req.query.userId || "anonymous";
-  const state = encodeState({ userId });
+  const frontendRedirect =
+    typeof req.query.frontend_redirect === "string" ? req.query.frontend_redirect : null;
+  const state = encodeState({ userId, frontendRedirect });
   const url = getSpotifyAuthUrl(state);
 
   if (!url) {
@@ -51,18 +53,23 @@ router.get("/callback", async (req, res) => {
     const tokenData = await exchangeCodeForTokens(String(code));
     const parsedState = decodeState(state);
     const userId = parsedState?.userId || "anonymous";
+    const frontendRedirectFromState = parsedState?.frontendRedirect || null;
 
     if (tokenData.refresh_token) {
       setUserRefreshToken(userId, tokenData.refresh_token);
     }
 
-    const frontendBaseUrl = process.env.FRONTEND_APP_URL || "http://localhost:19006";
+    const frontendBaseUrl =
+      frontendRedirectFromState || process.env.FRONTEND_APP_URL || "http://localhost:19006";
     const redirectUrl = new URL(frontendBaseUrl);
     redirectUrl.searchParams.set("spotify", "connected");
     redirectUrl.searchParams.set("userId", String(userId));
 
     if (tokenData.access_token) {
       redirectUrl.searchParams.set("spotify_access_token", tokenData.access_token);
+    }
+    if (tokenData.refresh_token) {
+      redirectUrl.searchParams.set("spotify_refresh_token", tokenData.refresh_token);
     }
 
     return res
