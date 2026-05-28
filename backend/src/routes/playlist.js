@@ -66,8 +66,29 @@ function getFriendlyErrorMessage(error, context) {
   return message;
 }
 
+function computeAge(dateOfBirth) {
+  if (!dateOfBirth) {
+    return null;
+  }
+
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) {
+    return null;
+  }
+
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const monthDiff = now.getMonth() - dob.getMonth();
+  const dayDiff = now.getDate() - dob.getDate();
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+}
+
 router.post("/generate", async (req, res) => {
-  const { workout, spotifyRefreshToken } = req.body || {};
+  const { workout, userContext, spotifyRefreshToken } = req.body || {};
 
   if (!spotifyRefreshToken || typeof spotifyRefreshToken !== "string") {
     return res.status(400).json({
@@ -85,7 +106,18 @@ router.post("/generate", async (req, res) => {
 
   let blueprint;
   try {
-    blueprint = await generateBlueprint(workout);
+    const normalizedContext = {
+      name: userContext?.name || null,
+      workout_frequency: userContext?.workoutFrequency || null,
+      favorite_genres: Array.isArray(userContext?.favoriteGenres) ? userContext.favoriteGenres : [],
+      date_of_birth: userContext?.dateOfBirth || null,
+      age: computeAge(userContext?.dateOfBirth)
+    };
+
+    blueprint = await generateBlueprint({
+      workout,
+      user_profile_context: normalizedContext
+    });
   } catch (error) {
     return res.status(502).json({
       ok: false,

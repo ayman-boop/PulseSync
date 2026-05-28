@@ -1,6 +1,7 @@
 import React from "react";
 import { Button, StyleSheet, Text, View } from "react-native";
 import * as Linking from "expo-linking";
+import FloatingMusicBackground from "../components/FloatingMusicBackground";
 
 export default function ResultScreen({ route, navigation }) {
   const playlistUrl = route.params?.playlistUrl || "";
@@ -15,6 +16,7 @@ export default function ResultScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
+      <FloatingMusicBackground noteColor="#8A9A95" />
       <Text style={styles.title}>Playlist Generated</Text>
       <Text style={styles.label}>Playlist ID</Text>
       <Text selectable style={styles.value}>

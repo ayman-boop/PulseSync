@@ -96,7 +96,7 @@ async function generateBlueprint(workout) {
   const response = await client.responses.create({
     model,
     instructions:
-      "You are a music programming assistant for workout playlists. Return ONLY valid JSON, no markdown.",
+      "You are a music programming assistant for workout playlists. Use any provided user profile context (age, workout frequency, favorite genres) to personalize recommendations. Return ONLY valid JSON, no markdown.",
     input: [
       {
         role: "user",

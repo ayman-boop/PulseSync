@@ -15,8 +15,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { BACKEND_URL } from "../config/env";
 import { supabase } from "../lib/supabase";
+import FloatingMusicBackground from "../components/FloatingMusicBackground";
 
 const STORAGE_KEY = "pulsesync.spotifyRefreshToken";
+const onboardingStorageKey = (userId) => `pulsesync.onboarding.${userId}`;
 
 export default function HomeScreen({ navigation, session }) {
   const [name, setName] = useState("Leg Day");
@@ -28,6 +30,12 @@ export default function HomeScreen({ navigation, session }) {
   const [explicitAllowed, setExplicitAllowed] = useState(false);
   const [spotifyRefreshToken, setSpotifyRefreshToken] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [userContext, setUserContext] = useState({
+    name: "",
+    dateOfBirth: "",
+    workoutFrequency: "",
+    favoriteGenres: []
+  });
 
   const userId = session?.user?.id || "anonymous";
   const authToken = session?.access_token || "";
@@ -47,6 +55,43 @@ export default function HomeScreen({ navigation, session }) {
       }
     });
   }, []);
+
+  useEffect(() => {
+    async function loadUserContext() {
+      const metadata = session?.user?.user_metadata || {};
+      const contextFromMetadata = {
+        name: metadata?.name || "",
+        dateOfBirth: metadata?.date_of_birth || "",
+        workoutFrequency: metadata?.workout_frequency || "",
+        favoriteGenres: Array.isArray(metadata?.favorite_genres) ? metadata.favorite_genres : []
+      };
+
+      let contextFromOnboarding = {};
+      if (session?.user?.id) {
+        try {
+          const raw = await AsyncStorage.getItem(onboardingStorageKey(session.user.id));
+          const parsed = raw ? JSON.parse(raw) : null;
+          contextFromOnboarding = parsed?.data || {};
+        } catch (_error) {
+          contextFromOnboarding = {};
+        }
+      }
+
+      const merged = {
+        name: contextFromOnboarding?.name || contextFromMetadata.name || "",
+        dateOfBirth: contextFromOnboarding?.dateOfBirth || contextFromMetadata.dateOfBirth || "",
+        workoutFrequency: contextFromOnboarding?.workoutFrequency || contextFromMetadata.workoutFrequency || "",
+        favoriteGenres:
+          (Array.isArray(contextFromOnboarding?.favoriteGenres) && contextFromOnboarding.favoriteGenres) ||
+          contextFromMetadata.favoriteGenres ||
+          []
+      };
+
+      setUserContext(merged);
+    }
+
+    loadUserContext();
+  }, [session?.user?.id, session?.user?.user_metadata]);
 
   useEffect(() => {
     const handleUrl = async ({ url }) => {
@@ -124,6 +169,7 @@ export default function HomeScreen({ navigation, session }) {
         },
         body: JSON.stringify({
           workout,
+          userContext,
           spotifyRefreshToken: spotifyRefreshToken.trim()
         })
       });
@@ -146,53 +192,59 @@ export default function HomeScreen({ navigation, session }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Workout Input</Text>
-      <TextInput value={name} onChangeText={setName} placeholder="Workout name" style={styles.input} />
-      <TextInput value={intensity} onChangeText={setIntensity} placeholder="Intensity" style={styles.input} />
-      <TextInput value={volume} onChangeText={setVolume} placeholder="Volume" style={styles.input} />
-      <TextInput
-        value={durationMinutes}
-        onChangeText={setDurationMinutes}
-        placeholder="Duration minutes"
-        keyboardType="numeric"
-        style={styles.input}
-      />
-      <TextInput value={genres} onChangeText={setGenres} placeholder="Genres (comma-separated)" style={styles.input} />
-      <TextInput value={vibe} onChangeText={setVibe} placeholder="Vibe" style={styles.input} />
-
-      <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Explicit Allowed</Text>
-        <Switch value={explicitAllowed} onValueChange={setExplicitAllowed} />
-      </View>
-
-      <View style={styles.block}>
-        <Button title="Connect Spotify" onPress={handleOpenSpotifyConnect} />
-      </View>
-
-      <TextInput
-        value={spotifyRefreshToken}
-        onChangeText={setSpotifyRefreshToken}
-        placeholder="Paste Spotify refresh token"
-        style={styles.input}
-      />
-
-      <View style={styles.block}>
-        <Button
-          title={isGenerating ? "Generating..." : "Generate Playlist"}
-          onPress={handleGeneratePlaylist}
-          disabled={isGenerating}
+    <View style={styles.screen}>
+      <FloatingMusicBackground noteColor="#8A9A95" />
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Workout Input</Text>
+        <TextInput value={name} onChangeText={setName} placeholder="Workout name" style={styles.input} />
+        <TextInput value={intensity} onChangeText={setIntensity} placeholder="Intensity" style={styles.input} />
+        <TextInput value={volume} onChangeText={setVolume} placeholder="Volume" style={styles.input} />
+        <TextInput
+          value={durationMinutes}
+          onChangeText={setDurationMinutes}
+          placeholder="Duration minutes"
+          keyboardType="numeric"
+          style={styles.input}
         />
-      </View>
+        <TextInput value={genres} onChangeText={setGenres} placeholder="Genres (comma-separated)" style={styles.input} />
+        <TextInput value={vibe} onChangeText={setVibe} placeholder="Vibe" style={styles.input} />
 
-      <View style={styles.block}>
-        <Button title="Sign Out" onPress={handleSignOut} />
-      </View>
-    </ScrollView>
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>Explicit Allowed</Text>
+          <Switch value={explicitAllowed} onValueChange={setExplicitAllowed} />
+        </View>
+
+        <View style={styles.block}>
+          <Button title="Connect Spotify" onPress={handleOpenSpotifyConnect} />
+        </View>
+
+        <TextInput
+          value={spotifyRefreshToken}
+          onChangeText={setSpotifyRefreshToken}
+          placeholder="Paste Spotify refresh token"
+          style={styles.input}
+        />
+
+        <View style={styles.block}>
+          <Button
+            title={isGenerating ? "Generating..." : "Generate Playlist"}
+            onPress={handleGeneratePlaylist}
+            disabled={isGenerating}
+          />
+        </View>
+
+        <View style={styles.block}>
+          <Button title="Sign Out" onPress={handleSignOut} />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1
+  },
   container: {
     padding: 16,
     gap: 12
